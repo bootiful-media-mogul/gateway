@@ -1,6 +1,7 @@
 package com.joshlong.mogul.gateway;
 
 import org.springframework.boot.SpringApplication;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -15,8 +16,6 @@ import org.springframework.web.servlet.function.RequestPredicates;
 import org.springframework.web.servlet.function.RouterFunction;
 import org.springframework.web.servlet.function.RouterFunctions;
 import org.springframework.web.servlet.function.ServerResponse;
-
-import java.util.Set;
 
 import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.rewritePath;
 import static org.springframework.cloud.gateway.server.mvc.filter.TokenRelayFilterFunctions.tokenRelay;
@@ -62,11 +61,17 @@ public class GatewayApplication {
 
 	@Bean
 	SecurityFilterChain mySecurityFilterChain(HttpSecurity httpSecurity) throws Exception {
-		return httpSecurity.authorizeHttpRequests(a -> a.anyRequest().authenticated())
-			.csrf(AbstractHttpConfigurer::disable)
-			.cors(AbstractHttpConfigurer::disable)
-			.oauth2Login(Customizer.withDefaults())
-			.oauth2Client(Customizer.withDefaults())
+		return httpSecurity//
+			.authorizeHttpRequests(a -> a //
+				.requestMatchers(EndpointRequest.toAnyEndpoint())
+				.permitAll()//
+				.anyRequest()
+				.authenticated()//
+			)//
+			.csrf(AbstractHttpConfigurer::disable)//
+			.cors(AbstractHttpConfigurer::disable)//
+			.oauth2Login(Customizer.withDefaults()) //
+			.oauth2Client(Customizer.withDefaults())//
 			.build();
 	}
 
