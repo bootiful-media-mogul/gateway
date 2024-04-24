@@ -33,19 +33,15 @@ public class GatewayApplication {
 		SpringApplication.run(GatewayApplication.class, args);
 	}
 
-
-/*	@Bean
-	RouteLocator gateway(RouteLocatorBuilder rlb, @Value("${mogul.gateway.ui}") String ui,
-			@Value("${mogul.gateway.api}") String api) {
-		var apiPrefix = "/api/";
-		return rlb//
-			.routes()
-			.route(rs -> rs.path(apiPrefix + "**")
-				.filters(f -> f.tokenRelay().rewritePath(apiPrefix + "(?<segment>.*)", "/$\\{segment}"))
-				.uri(api))
-			.route(rs -> rs.path("/**").uri(ui))
-			.build();
-	}*/
+	/*
+	 * @Bean RouteLocator gateway(RouteLocatorBuilder rlb, @Value("${mogul.gateway.ui}")
+	 * String ui,
+	 *
+	 * @Value("${mogul.gateway.api}") String api) { var apiPrefix = "/api/"; return rlb//
+	 * .routes() .route(rs -> rs.path(apiPrefix + "**") .filters(f ->
+	 * f.tokenRelay().rewritePath(apiPrefix + "(?<segment>.*)", "/$\\{segment}"))
+	 * .uri(api)) .route(rs -> rs.path("/**").uri(ui)) .build(); }
+	 */
 
 	static final String UI_PREFIX = "/";
 	static final String UI_HOST = "http://localhost:5173";
@@ -55,56 +51,44 @@ public class GatewayApplication {
 
 	static final String WILDCARD = "**";
 
-
-
-    @Bean
+	@Bean
 	RouterFunction<ServerResponse> apiRouteGets() {
-        return route("apiRouteGets")
-                .GET(API_PREFIX + WILDCARD, http(API_HOST))
-                .before(rewritePath(API_PREFIX + "(?<segment>.*)", "/${segment}"))
-                .filter(tokenRelay())
-                .build();
-    }
+		return route("apiRouteGets").GET(API_PREFIX + WILDCARD, http(API_HOST))
+			.before(rewritePath(API_PREFIX + "(?<segment>.*)", "/${segment}"))
+			.filter(tokenRelay())
+			.build();
+	}
 
-    @Bean
-    RouterFunction<ServerResponse> apiRoutePosts() {
-        return route("apiRoutePosts")
-                .POST(API_PREFIX + WILDCARD, http(API_HOST))
-                .before(rewritePath(API_PREFIX + "(?<segment>.*)", "/${segment}"))
-                .filter(tokenRelay())
-                .build();
-    }
+	@Bean
+	RouterFunction<ServerResponse> apiRoutePosts() {
+		return route("apiRoutePosts").POST(API_PREFIX + WILDCARD, http(API_HOST))
+			.before(rewritePath(API_PREFIX + "(?<segment>.*)", "/${segment}"))
+			.filter(tokenRelay())
+			.build();
+	}
 
-	    @Bean
-    RouterFunction<ServerResponse> apiRouteOptions() {
-        return route("apiRouteOptions")
-                . OPTIONS(API_PREFIX + WILDCARD, http(API_HOST))
-                .before(rewritePath(API_PREFIX + "(?<segment>.*)", "/${segment}"))
-                .filter(tokenRelay())
-                .build();
-    }
-
-
+	@Bean
+	RouterFunction<ServerResponse> apiRouteOptions() {
+		return route("apiRouteOptions").OPTIONS(API_PREFIX + WILDCARD, http(API_HOST))
+			.before(rewritePath(API_PREFIX + "(?<segment>.*)", "/${segment}"))
+			.filter(tokenRelay())
+			.build();
+	}
 
 	@GetMapping(UI_PREFIX + WILDCARD)
 	ResponseEntity<?> ui(ProxyExchange<?> request) {
 		var path = request.path(UI_PREFIX);
-		return request
-				.uri(URI.create(UI_HOST + "/" + path))
-				.get();
+		return request.uri(URI.create(UI_HOST + "/" + path)).get();
 	}
 
 	@Bean
 	SecurityFilterChain mySecurityFilterChain(HttpSecurity httpSecurity) throws Exception {
-		return httpSecurity
-				.authorizeHttpRequests(a -> a.anyRequest().authenticated())
-				.csrf(AbstractHttpConfigurer::disable)
-				.cors(AbstractHttpConfigurer::disable)
-				.oauth2Login(Customizer.withDefaults())
-				.oauth2Client(Customizer.withDefaults())
-				.build();
+		return httpSecurity.authorizeHttpRequests(a -> a.anyRequest().authenticated())
+			.csrf(AbstractHttpConfigurer::disable)
+			.cors(AbstractHttpConfigurer::disable)
+			.oauth2Login(Customizer.withDefaults())
+			.oauth2Client(Customizer.withDefaults())
+			.build();
 	}
-
-
 
 }
