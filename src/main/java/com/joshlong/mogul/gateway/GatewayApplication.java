@@ -3,20 +3,20 @@ package com.joshlong.mogul.gateway;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.cloud.gateway.mvc.ProxyExchange;
 import org.springframework.context.annotation.Bean;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.function.RequestPredicates;
 import org.springframework.web.servlet.function.RouterFunction;
+import org.springframework.web.servlet.function.RouterFunctions;
 import org.springframework.web.servlet.function.ServerResponse;
 
-import java.net.URI;
+import java.util.Set;
 
 import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.rewritePath;
 import static org.springframework.cloud.gateway.server.mvc.filter.TokenRelayFilterFunctions.tokenRelay;
@@ -33,52 +33,31 @@ public class GatewayApplication {
 		SpringApplication.run(GatewayApplication.class, args);
 	}
 
-	/*
-	 * @Bean RouteLocator gateway(RouteLocatorBuilder rlb, @Value("${mogul.gateway.ui}")
-	 * String ui,
-	 *
-	 * @Value("${mogul.gateway.api}") String api) { var apiPrefix = "/api/"; return rlb//
-	 * .routes() .route(rs -> rs.path(apiPrefix + "**") .filters(f ->
-	 * f.tokenRelay().rewritePath(apiPrefix + "(?<segment>.*)", "/$\\{segment}"))
-	 * .uri(api)) .route(rs -> rs.path("/**").uri(ui)) .build(); }
-	 */
-
-	static final String UI_PREFIX = "/";
-	static final String UI_HOST = "http://localhost:5173";
-
-	static final String API_PREFIX = "/api/";
-	static final String API_HOST = "http://localhost:8080";
-
-	static final String WILDCARD = "**";
-
 	@Bean
-	RouterFunction<ServerResponse> apiRouteGets() {
-		return route("apiRouteGets").GET(API_PREFIX + WILDCARD, http(API_HOST))
-			.before(rewritePath(API_PREFIX + "(?<segment>.*)", "/${segment}"))
-			.filter(tokenRelay())
-			.build();
-	}
+	RouterFunction<ServerResponse> routes(GatewayProperties gatewayProperties) {
 
-	@Bean
-	RouterFunction<ServerResponse> apiRoutePosts() {
-		return route("apiRoutePosts").POST(API_PREFIX + WILDCARD, http(API_HOST))
-			.before(rewritePath(API_PREFIX + "(?<segment>.*)", "/${segment}"))
-			.filter(tokenRelay())
-			.build();
-	}
+		var wildcard = "**";
 
-	@Bean
-	RouterFunction<ServerResponse> apiRouteOptions() {
-		return route("apiRouteOptions").OPTIONS(API_PREFIX + WILDCARD, http(API_HOST))
-			.before(rewritePath(API_PREFIX + "(?<segment>.*)", "/${segment}"))
-			.filter(tokenRelay())
-			.build();
-	}
+		var route = route("routes");
 
-	@GetMapping(UI_PREFIX + WILDCARD)
-	ResponseEntity<?> ui(ProxyExchange<?> request) {
-		var path = request.path(UI_PREFIX);
-		return request.uri(URI.create(UI_HOST + "/" + path)).get();
+		// API
+		var apiPrefix = gatewayProperties.apiPrefix();
+		var apiHost = gatewayProperties.api();
+
+		for (var m : HttpMethod.values()) {
+			route = route//
+				.add(RouterFunctions.route(
+						RequestPredicates.method(m).and(RequestPredicates.path(apiPrefix + wildcard)), http(apiHost)))
+				.before(rewritePath(apiPrefix + "(?<segment>.*)", "/${segment}"))
+				.filter(tokenRelay());
+		}
+
+		// UI
+		var uiPrefix = gatewayProperties.uiPrefix();
+		var uiHost = gatewayProperties.ui();
+		route = route.GET(uiPrefix + wildcard, http(uiHost));
+
+		return route.build();
 	}
 
 	@Bean
