@@ -4,8 +4,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.gateway.server.mvc.predicate.GatewayRequestPredicates;
 import org.springframework.context.annotation.Bean;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -32,6 +32,9 @@ public class GatewayApplication {
 		SpringApplication.run(GatewayApplication.class, args);
 	}
 
+	// /api/** => api-host:8080
+	// /** => ui-host:5173
+
 	@Bean
 	RouterFunction<ServerResponse> routes(GatewayProperties gatewayProperties) {
 
@@ -43,30 +46,24 @@ public class GatewayApplication {
 		var apiPrefix = gatewayProperties.apiPrefix();
 		var apiHost = gatewayProperties.api();
 
-		for (var m : HttpMethod.values()) {
-			route = route//
-				.add(RouterFunctions.route(
-						RequestPredicates.method(m).and(RequestPredicates.path(apiPrefix + wildcard)), http(apiHost)))
+		route = route//
+				.add(RouterFunctions.route(RequestPredicates.path(apiPrefix + wildcard), http(apiHost)))
 				.before(rewritePath(apiPrefix + "(?<segment>.*)", "/${segment}"))
 				.filter(tokenRelay());
-		}
 
 		// UI
 		var uiPrefix = gatewayProperties.uiPrefix();
 		var uiHost = gatewayProperties.ui();
-		route = route.GET(uiPrefix + wildcard, http(uiHost));
-
-		return route.build();
+		return route.build()
+				.and(route("ui").route(GatewayRequestPredicates.path(uiPrefix + wildcard), http(uiHost)).build());
 	}
 
 	@Bean
 	SecurityFilterChain mySecurityFilterChain(HttpSecurity httpSecurity) throws Exception {
 		return httpSecurity//
 			.authorizeHttpRequests(a -> a //
-				.requestMatchers(EndpointRequest.toAnyEndpoint())
-				.permitAll()//
-				.anyRequest()
-				.authenticated()//
+					.requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()//
+					.anyRequest().authenticated()//
 			)//
 			.csrf(AbstractHttpConfigurer::disable)//
 			.cors(AbstractHttpConfigurer::disable)//
