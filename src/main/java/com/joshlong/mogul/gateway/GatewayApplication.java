@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.servlet.function.RequestPredicates;
 import org.springframework.web.servlet.function.RouterFunction;
 import org.springframework.web.servlet.function.RouterFunctions;
@@ -55,7 +56,7 @@ public class GatewayApplication {
 		var uiPrefix = gatewayProperties.uiPrefix();
 		var uiHost = gatewayProperties.ui();
 		return route.build()
-				.and(route("ui").route(GatewayRequestPredicates.path(uiPrefix + wildcard), http(uiHost)).build());
+				.and(route("ui").route(RequestPredicates.path(uiPrefix + wildcard), http(uiHost)).build());
 	}
 
 	@Bean
