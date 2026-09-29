@@ -1,6 +1,6 @@
 package com.joshlong.mogul.gateway;
 
-import com.joshlong.mogul.gateway.settings.SettingsClient;
+import com.joshlong.mogul.settings.SettingsClient;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
@@ -126,12 +126,6 @@ public class GatewayApplication {
 	MogulSettingsAwareClientRegistrationRepository mogulSettingsAwareClientRegistrationRepository(
 			ObjectProvider<CurrentToken> token, SettingsClient settingsClient, Environment environment) {
 		return new MogulSettingsAwareClientRegistrationRepository(token, environment, settingsClient);
-	}
-
-	@Bean
-	SettingsClient settingsClient(RestClient.Builder restClientBuilder,
-			@Value(API_PROPERTY_NAME) String apiEndpointUrl) {
-		return new SettingsClient(restClientBuilder, apiEndpointUrl + "/graphql");
 	}
 
 	@Bean

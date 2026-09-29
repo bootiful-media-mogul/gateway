@@ -2,8 +2,8 @@ package com.joshlong.mogul.gateway;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.joshlong.mogul.gateway.settings.SettingsClient;
-import com.joshlong.mogul.gateway.settings.SettingsPage;
+import com.joshlong.mogul.settings.SettingsClient;
+import com.joshlong.mogul.settings.SettingsPage;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
