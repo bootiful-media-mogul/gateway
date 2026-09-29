@@ -1,6 +1,11 @@
 package com.joshlong.mogul.gateway;
 
 import com.joshlong.mogul.settings.SettingsClient;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+import org.springframework.aot.hint.RuntimeHints;
+import org.springframework.aot.hint.RuntimeHintsRegistrar;
+import org.springframework.aot.hint.TypeReference;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
@@ -11,6 +16,7 @@ import org.springframework.cloud.gateway.server.mvc.config.GatewayMvcProperties;
 import org.springframework.cloud.gateway.server.mvc.handler.ProxyExchange;
 import org.springframework.cloud.gateway.server.mvc.handler.RestClientProxyExchange;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
@@ -19,9 +25,21 @@ import org.springframework.scheduling.concurrent.SimpleAsyncTaskScheduler;
 import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.oidc.authentication.logout.OidcLogoutToken;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
+import org.springframework.security.oauth2.core.*;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationResponseType;
+import org.springframework.security.oauth2.core.oidc.AddressStandardClaim;
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.servlet.function.RouterFunction;
 import org.springframework.web.servlet.function.RouterFunctions;
@@ -29,7 +47,12 @@ import org.springframework.web.servlet.function.ServerRequest;
 import org.springframework.web.servlet.function.ServerResponse;
 
 import java.net.URI;
+import java.net.URL;
 import java.net.http.HttpClient;
+import java.time.Instant;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.function.Function;
 
 import static org.springframework.cloud.gateway.server.mvc.filter.BeforeFilterFunctions.rewritePath;
@@ -40,6 +63,7 @@ import static org.springframework.cloud.gateway.server.mvc.handler.GatewayRouter
 import static org.springframework.cloud.gateway.server.mvc.handler.HandlerFunctions.http;
 import static org.springframework.cloud.gateway.server.mvc.predicate.GatewayRequestPredicates.path;
 
+@ImportRuntimeHints(GatewayApplication.Hints.class)
 @SpringBootApplication
 @EnableConfigurationProperties(GatewayProperties.class)
 public class GatewayApplication {
@@ -174,6 +198,28 @@ public class GatewayApplication {
 		return RouterFunctions.route() //
 			.GET("/login", _ -> ServerResponse.temporaryRedirect(location).build()) //
 			.build();
+	}
+
+	static class Hints implements RuntimeHintsRegistrar {
+
+		@Override
+		public void registerHints(@NonNull RuntimeHints hints, @Nullable ClassLoader classLoader) {
+
+			for (var c : new String[] { "java.time.Ser", "java.util.Collections$UnmodifiableMap" }) {
+				hints.reflection().registerType(TypeReference.of(c), th -> th.withJavaSerialization(true));
+			}
+
+			for (var c : new Class[] { URL.class, URI.class, AuthorizationGrantType.class,
+					OAuth2AuthorizationResponseType.class, OidcIdToken.class, Instant.class, AddressStandardClaim.class,
+					OidcUserInfo.class, OidcUserAuthority.class, OAuth2UserAuthority.class, LinkedHashSet.class,
+					HashSet.class, LinkedHashMap.class, OAuth2AuthorizationRequest.class, AbstractOAuth2Token.class,
+					DefaultOAuth2User.class, Jwt.class, OAuth2AccessToken.class, OAuth2DeviceCode.class,
+					OAuth2RefreshToken.class, OAuth2UserCode.class, OidcIdToken.class, OidcLogoutToken.class,
+					DefaultOidcUser.class })
+				hints.reflection().registerType(c, th -> th.withJavaSerialization(true));
+
+		}
+
 	}
 
 }
