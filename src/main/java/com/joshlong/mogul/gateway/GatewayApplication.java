@@ -11,16 +11,16 @@ import org.springframework.cloud.gateway.server.mvc.config.GatewayMvcProperties;
 import org.springframework.cloud.gateway.server.mvc.handler.ProxyExchange;
 import org.springframework.cloud.gateway.server.mvc.handler.RestClientProxyExchange;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.scheduling.concurrent.SimpleAsyncTaskScheduler;
-import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizedClientManager;
+import org.springframework.security.oauth2.client.web.HttpSessionOAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.servlet.function.RouterFunction;
@@ -41,6 +41,7 @@ import static org.springframework.cloud.gateway.server.mvc.handler.HandlerFuncti
 import static org.springframework.cloud.gateway.server.mvc.predicate.GatewayRequestPredicates.path;
 
 @SpringBootApplication
+@ImportRuntimeHints(SessionTokenHints.class)
 @EnableConfigurationProperties(GatewayProperties.class)
 public class GatewayApplication {
 
@@ -71,10 +72,17 @@ public class GatewayApplication {
 		};
 	}
 
-	// todo: do i need the following?
+	/**
+	 * where a logged-in user's access token lives: in their http session, which spring
+	 * session keeps in redis. it used to live in a map on whichever gateway node they
+	 * logged in through, so a restart or a deploy -- or, with two nodes, the next request
+	 * landing on the other one -- left them logged in but with no token, and every api
+	 * call bounced to /login. login, the token relay and {@link CurrentToken} all go
+	 * through this one.
+	 */
 	@Bean
-	OAuth2AuthorizedClientService authorizedClientService(ClientRegistrationRepository clientRegistrationRepository) {
-		return new InMemoryOAuth2AuthorizedClientService(clientRegistrationRepository);
+	OAuth2AuthorizedClientRepository authorizedClientRepository() {
+		return new HttpSessionOAuth2AuthorizedClientRepository();
 	}
 
 	/**

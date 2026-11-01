@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -28,6 +27,12 @@ class SecurityConfiguration {
 	@Bean
 	SecurityFilterChain securityFilterChain(@Value("${auth0.audience}") String audience,
 			ClientRegistrationRepository clientRegistrationRepository, HttpSecurity http) throws Exception {
+		// one resolver for every trip to auth0. logging in uses it, and so does quietly
+		// fetching a new token for someone still logged in but without one -- which
+		// happens after a token expires, or the gateway restarts. auth0 only issues a
+		// token the api can verify when it's asked for the audience; without it, it
+		// issues an encrypted one meant for nobody, and every api call is a 401.
+		var authorizationRequestResolver = this.authorizationRequestResolver(audience, clientRegistrationRepository);
 		return http//
 			.authorizeHttpRequests((authorize) -> authorize//
 				.requestMatchers(EndpointRequest.toAnyEndpoint())
@@ -38,13 +43,13 @@ class SecurityConfiguration {
 				.authenticated()//
 			)//
 			.oauth2Login(oauth2 -> oauth2//
-				.authorizationEndpoint(ae -> ae.authorizationRequestResolver(
-						this.authorizationRequestResolver(audience, clientRegistrationRepository)))
+				.authorizationEndpoint(ae -> ae.authorizationRequestResolver(authorizationRequestResolver))
 				.failureHandler(this::authenticationFailed)//
 			)
 			.exceptionHandling(a -> a.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login")))
 			.csrf(AbstractHttpConfigurer::disable)//
-			.oauth2Client(Customizer.withDefaults())//
+			.oauth2Client(client -> client
+				.authorizationCodeGrant(grant -> grant.authorizationRequestResolver(authorizationRequestResolver)))//
 			.build();
 	}
 
