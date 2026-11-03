@@ -100,6 +100,15 @@
             <plugin>
                 <groupId>org.graalvm.buildtools</groupId>
                 <artifactId>native-maven-plugin</artifactId>
+                <configuration>
+                    <buildArgs>
+                        <!-- netty's cleaner on java 25 uses Arena.ofShared(): without this, the first
+                        buffer it frees after real traffic throws on shutdown, and the process hangs
+                        until it's killed -->
+                        <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
+                        <buildArg>-H:+SharedArenaSupport</buildArg>
+                    </buildArgs>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>io.spring.javaformat</groupId>
