@@ -10,6 +10,8 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -44,7 +46,7 @@ class ReauthorizationAudienceTest {
 		var query = location.substring(location.indexOf('?') + 1);
 		for (var parameter : query.split("&"))
 			if (parameter.startsWith("audience="))
-				return parameter.substring("audience=".length());
+				return URLDecoder.decode(parameter.substring("audience=".length()), StandardCharsets.UTF_8);
 		return null;
 	}
 
@@ -54,7 +56,7 @@ class ReauthorizationAudienceTest {
 			.andReturn()
 			.getResponse()
 			.getRedirectedUrl();
-		assertThat(audienceOf(location)).endsWith("/api/v2/");
+		assertThat(audienceOf(location)).isEqualTo("https://api.mogul.tools");
 	}
 
 	@Test
@@ -68,7 +70,7 @@ class ReauthorizationAudienceTest {
 			.getResponse();
 		var location = response.getRedirectedUrl();
 		assertThat(location).as("the relay should have sent them to auth0").isNotNull();
-		assertThat(audienceOf(location)).endsWith("/api/v2/");
+		assertThat(audienceOf(location)).isEqualTo("https://api.mogul.tools");
 	}
 
 }
